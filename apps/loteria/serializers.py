@@ -14,6 +14,14 @@ class LoteriaSerializer(serializers.ModelSerializer):
         model = Loteria
         fields = ['id', 'nombre', 'foto', 'activa']
         read_only_fields = ['id']
+    
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        if instance.foto:
+            ret['foto'] = instance.foto.url
+        else:
+            ret['foto'] = None
+        return ret
 
 
 class TiradaSerializer(serializers.ModelSerializer):
@@ -21,8 +29,13 @@ class TiradaSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Tirada
-        fields = ['id', 'loteria', 'loteria_nombre', 'hora', 'fecha', 'activa', 'pick_3', 'pick_4']
+        fields = ['id', 'loteria', 'loteria_nombre', 'hora', 'fecha', 'es_recurrente', 'activa', 'pick_3', 'pick_4']
         read_only_fields = ['id', 'loteria_nombre']
+    
+    def validate(self, data):
+        if not data.get('es_recurrente') and not data.get('fecha'):
+            raise serializers.ValidationError("Debe proporcionar una fecha o marcar como recurrente")
+        return data
 
 
 class ResultadoSerializer(serializers.Serializer):

@@ -63,13 +63,16 @@ class TiradaViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def activas(self, request):
+        from datetime import date
         now = timezone.now()
+        hoy = now.date()
+        
+        # Obtener tiradas recurrentes y no recurrentes de hoy/futuro
+        from django.db.models import Q
         tiradas = Tirada.objects.filter(
-            activa=True,
-            fecha__gte=now.date()
-        ).filter(
-            loteria__activa=True
-        ).order_by('fecha', 'hora')
+            Q(es_recurrente=True, activa=True, loteria__activa=True) |
+            Q(es_recurrente=False, activa=True, fecha__gte=hoy, loteria__activa=True)
+        ).order_by('hora')
         
         serializer = self.get_serializer(tiradas, many=True)
         return Response(serializer.data)

@@ -35,7 +35,8 @@ class Loteria(models.Model):
 class Tirada(models.Model):
     loteria = models.ForeignKey(Loteria, on_delete=models.CASCADE, related_name='tiradas')
     hora = models.TimeField()
-    fecha = models.DateField()
+    fecha = models.DateField(null=True, blank=True)
+    es_recurrente = models.BooleanField(default=False, help_text="Si es True, se repite todos los días a la hora indicada")
     activa = models.BooleanField(default=True)
     pick_3 = models.CharField(max_length=3, null=True, blank=True)
     pick_4 = models.CharField(max_length=4, null=True, blank=True)
@@ -43,8 +44,10 @@ class Tirada(models.Model):
     class Meta:
         verbose_name = 'Tirada'
         verbose_name_plural = 'Tiradas'
-        ordering = ['-fecha', '-hora']
-        unique_together = ['loteria', 'hora', 'fecha']
+        ordering = ['hora']
+        unique_together = [['loteria', 'hora', 'fecha'], ['loteria', 'hora']]
 
     def __str__(self):
+        if self.es_recurrente:
+            return f"{self.loteria.nombre} - {self.hora} (diario)"
         return f"{self.loteria.nombre} - {self.fecha} {self.hora}"
