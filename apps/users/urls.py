@@ -2,16 +2,16 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (
     UsuarioViewSet, TarjetaSistemaViewSet,
-    SolicitudAcreditacionViewSet, ExtraccionViewSet
+    SolicitudAcreditacionViewSet, ExtraccionViewSet, usuario_me
 )
 
 urlpatterns = [
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     
-    # Usuario endpoints
+    # Usuario endpoints - me/ debe ir antes de <int:pk>/
+    path('me/', usuario_me, name='usuarios-me'),
     path('', UsuarioViewSet.as_view({'get': 'list', 'post': 'create'}), name='usuarios-list'),
-    path('me/', UsuarioViewSet.as_view({'get': 'retrieve'}), name='usuarios-me'),
     path('<int:pk>/', UsuarioViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update'}), name='usuarios-detail'),
     
     # Tarjetas
