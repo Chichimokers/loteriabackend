@@ -150,3 +150,66 @@ class TiradaViewSet(viewsets.ModelViewSet):
                 usuario = apuesta.usuario
                 usuario.saldo_principal += apuesta.premio_total
                 usuario.save()
+
+
+from django.db.models import Sum, Count
+from django.db.models.functions import TruncDate
+from apps.users.models import SolicitudAcreditacion, Extraccion
+
+
+class MetricasViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+    
+    def list(self, request):
+        if not request.user.is_staff:
+            return Response({'error': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
+        
+        from apps.apuestas.models import Apuesta
+        
+        total_apostado = Apuesta.objects.aggregate(total=Sum('monto_total'))['total'] or 0
+        total_premios_pagados = Apuesta.objects.filter(paga=True).aggregate(total=Sum('premio_total'))['total'] or 0
+        
+        top_loteria = (
+            Apuesta.objects.values('loteria__id', 'loteria__nombre')
+            .annotate(cantidad=Count('id'))
+            .order_by('-cantidad')
+            .first()
+        )
+        
+        top_tirada = (
+            Apuesta.objects.values('tirada__id', 'tirada__loteria__nombre', 'tirada__hora')
+            .annotate(cantidad=Count('id'))
+            .order_by('-cantidad')
+            .first()
+        )
+        
+        from datetime import date
+        hoy = date.today()
+        
+        acreditado_hoy = (
+            SolicitudAcreditacion.objects.filter(estado='aprobada', fecha__date=hoy)
+            .aggregate(total=Sum('monto'))['total'] or 0
+        )
+        
+        extraido_hoy = (
+            Extraccion.objects.filter(estado='aprobada', fecha__date=hoy)
+            .aggregate(total=Sum('monto'))['total'] or 0
+        )
+        
+        return Response({
+            'total_apostado': str(total_apostado),
+            'total_premios_pagados': str(total_premios_pagados),
+            'top_loteria': {
+                'id': top_loteria['loteria__id'] if top_loteria else None,
+                'nombre': top_loteria['loteria__nombre'] if top_loteria else None,
+                'cantidad_apuestas': top_loteria['cantidad'] if top_loteria else 0
+            },
+            'top_tirada': {
+                'id': top_tirada['tirada__id'] if top_tirada else None,
+                'loteria': top_tirada['tirada__loteria__nombre'] if top_tirada else None,
+                'hora': str(top_tirada['tirada__hora']) if top_tirada else None,
+                'cantidad_apuestas': top_tirada['cantidad'] if top_tirada else 0
+            },
+            'acreditado_hoy': str(acreditado_hoy),
+            'extraido_hoy': str(extraido_hoy)
+        })

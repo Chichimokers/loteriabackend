@@ -7,6 +7,7 @@ from django.urls import path, include, re_path
 from django.http import JsonResponse
 from django.views.static import serve
 from django.conf import settings
+from apps.loteria.views import MetricasViewSet
 
 
 def health_check(request):
@@ -38,6 +39,7 @@ urlpatterns = [
     path('api/v1/usuarios/', include('apps.users.urls')),
     path('api/v1/loterias/', include('apps.loteria.urls')),
     path('api/v1/apuestas/', include('apps.apuestas.urls')),
+    path('api/v1/admin/metricas/', MetricasViewSet.as_view({'get': 'list'}), name='admin-metricas'),
     path('api/v1/admin/', admin.site.urls),
 ]
 
