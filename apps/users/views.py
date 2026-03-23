@@ -13,10 +13,16 @@ from .serializers import (
 )
 
 
-@api_view(['GET'])
+@api_view(['GET', 'PATCH'])
 @permission_classes([IsAuthenticated])
 def usuario_me(request):
-    return Response(UsuarioSerializer(request.user).data)
+    if request.method == 'GET':
+        return Response(UsuarioSerializer(request.user).data)
+    
+    serializer = UsuarioSerializer(request.user, data=request.data, partial=True)
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+    return Response(serializer.data)
 
 
 class UsuarioViewSet(viewsets.ModelViewSet):
