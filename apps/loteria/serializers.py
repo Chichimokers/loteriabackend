@@ -36,6 +36,32 @@ class TiradaSerializer(serializers.ModelSerializer):
         if not data.get('es_recurrente') and not data.get('fecha'):
             raise serializers.ValidationError("Debe proporcionar una fecha o marcar como recurrente")
         return data
+    
+    def to_representation(self, instance):
+        from datetime import date, timedelta
+        ret = super().to_representation(instance)
+        
+        # Calcular si la tirada está vigente (hoy o ayer)
+        hoy = date.today()
+        ayer = hoy - timedelta(days=1)
+        
+        # Determinar la fecha de la tirada
+        if instance.es_recurrente:
+            # Para recurrentes, consideramos que la fecha efectiva es ayer (último día)
+            fecha_tirada = ayer
+        else:
+            fecha_tirada = instance.fecha if instance.fecha else None
+        
+        # Si la tirada no es de hoy ni de ayer, ocultar resultados
+        if fecha_tirada and fecha_tirada < ayer:
+            ret['pick_3'] = None
+            ret['pick_4'] = None
+            ret['resultados_publicados'] = False
+        else:
+            # Si tiene resultados, marcar como publicados
+            ret['resultados_publicados'] = bool(instance.pick_3 or instance.pick_4)
+        
+        return ret
 
 
 class ResultadoSerializer(serializers.Serializer):

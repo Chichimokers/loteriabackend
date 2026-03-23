@@ -63,11 +63,13 @@ class TiradaViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def activas(self, request):
-        from datetime import date
+        from datetime import date, timedelta
         now = timezone.now()
         hoy = now.date()
+        ayer = hoy - timedelta(days=1)
         
-        # Obtener tiradas recurrentes y no recurrentes de hoy/futuro
+        # Mostrar tiradas de hoy y ayer que aún no están cerradas
+        # Las tiradas recurrentes se consideran del día anterior
         from django.db.models import Q
         tiradas = Tirada.objects.filter(
             Q(es_recurrente=True, activa=True, loteria__activa=True) |
@@ -87,15 +89,17 @@ class TiradaViewSet(viewsets.ModelViewSet):
         
         tirada = get_object_or_404(Tirada, id=serializer.validated_data['tirada_id'])
         
-        # Validar que la tirada sea del día actual
-        from datetime import date
+        # Validar que la tirada sea de hoy o ayer
+        from datetime import date, timedelta
         hoy = date.today()
+        ayer = hoy - timedelta(days=1)
         
         if tirada.es_recurrente:
-            pass  # Las tiradas recurrentes siempre se pueden cerrar hoy
-        elif tirada.fecha != hoy:
+            # Las tiradas recurrentes se cerraron ayer
+            pass
+        elif tirada.fecha not in [hoy, ayer]:
             return Response(
-                {'error': 'Solo se pueden ingresar resultados de tiradas del día actual'},
+                {'error': 'Solo se pueden ingresar resultados de tiradas de hoy o ayer'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
