@@ -20,7 +20,6 @@ class Apuesta(models.Model):
         verbose_name = 'Apuesta'
         verbose_name_plural = 'Apuestas'
         ordering = ['-fecha']
-        unique_together = ['usuario', 'tirada', 'fecha']
 
     def __str__(self):
         return f"Apuesta {self.id} - {self.usuario.email}"

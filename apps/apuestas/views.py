@@ -3,7 +3,6 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
-from django.db import IntegrityError
 
 from apps.loteria.models import Loteria, Modalidad, Tirada
 from .models import Apuesta
@@ -46,22 +45,16 @@ class ApuestaViewSet(viewsets.ModelViewSet):
             return Response({'error': 'Saldo insuficiente'}, status=status.HTTP_400_BAD_REQUEST)
         
         from datetime import date
-        try:
-            apuesta = Apuesta.objects.create(
-                usuario=request.user,
-                loteria=tirada.loteria,
-                modalidad=modalidad,
-                tirada=tirada,
-                numeros=numeros,
-                monto_total=monto_total,
-                monto_por_numero=monto_por_numero,
-                fecha=date.today()
-            )
-        except IntegrityError:
-            return Response(
-                {'error': 'Ya apostaste a esta tirada hoy'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        apuesta = Apuesta.objects.create(
+            usuario=request.user,
+            loteria=tirada.loteria,
+            modalidad=modalidad,
+            tirada=tirada,
+            numeros=numeros,
+            monto_total=monto_total,
+            monto_por_numero=monto_por_numero,
+            fecha=date.today()
+        )
         
         request.user.saldo_principal -= monto_total
         request.user.save()
