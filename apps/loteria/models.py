@@ -51,7 +51,7 @@ class Resultado(models.Model):
     tirada = models.ForeignKey(Tirada, on_delete=models.CASCADE, related_name='resultados')
     fecha = models.DateField()
     pick_3 = models.CharField(max_length=3, null=True, blank=True)
-    pick_4 = models.CharField(max_length=4, null=True, blank=True)
+    pick_4 = models.CharField(max_length=3, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
