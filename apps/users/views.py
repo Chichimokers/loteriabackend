@@ -111,8 +111,10 @@ class ExtraccionViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         monto = serializer.validated_data['monto']
-        self.request.user.saldo_principal -= monto
-        self.request.user.save()
+        usuario = self.request.user
+        usuario.saldo_principal -= monto
+        usuario.saldo_extraccion += monto
+        usuario.save()
         serializer.save(usuario=self.request.user)
     
     @action(detail=True, methods=['patch'], permission_classes=[IsAuthenticated])
@@ -123,6 +125,10 @@ class ExtraccionViewSet(viewsets.ModelViewSet):
         extraccion = self.get_object()
         extraccion.estado = 'aprobada'
         extraccion.save()
+        
+        usuario = extraccion.usuario
+        usuario.saldo_extraccion -= extraccion.monto
+        usuario.save()
         
         return Response(ExtraccionSerializer(extraccion).data)
     
@@ -136,7 +142,8 @@ class ExtraccionViewSet(viewsets.ModelViewSet):
         extraccion.save()
         
         usuario = extraccion.usuario
-        usuario.saldo_extraccion += extraccion.monto
+        usuario.saldo_extraccion -= extraccion.monto
+        usuario.saldo_principal += extraccion.monto
         usuario.save()
         
         return Response(ExtraccionSerializer(extraccion).data)
