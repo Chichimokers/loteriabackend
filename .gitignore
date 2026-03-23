@@ -19,9 +19,7 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-.env
 .venv
-env/
 venv/
 ENV/
 env.bak/
