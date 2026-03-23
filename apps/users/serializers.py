@@ -27,7 +27,7 @@ class UsuarioCreateSerializer(serializers.ModelSerializer):
 class TarjetaSistemaSerializer(serializers.ModelSerializer):
     class Meta:
         model = TarjetaSistema
-        fields = ['id', 'numero', 'banco', 'activa']
+        fields = ['id', 'numero', 'movil', 'banco', 'activa']
         read_only_fields = ['id']
 
 

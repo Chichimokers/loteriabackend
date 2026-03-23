@@ -98,11 +98,43 @@ Authorization: Bearer <token>
 
 | Método | Endpoint | Descripción | Auth |
 |--------|----------|-------------|------|
-| GET | `/usuarios/tarjetas/` | Listar tarjetas | Admin |
+| GET | `/usuarios/tarjetas/` | Listar tarjetas activas | Sí |
 | POST | `/usuarios/tarjetas/` | Crear tarjeta | Admin |
 | GET | `/usuarios/tarjetas/{id}/` | Ver tarjeta | Admin |
 | PATCH | `/usuarios/tarjetas/{id}/` | Editar tarjeta | Admin |
 | DELETE | `/usuarios/tarjetas/{id}/` | Eliminar tarjeta | Admin |
+
+### Crear Tarjeta (Admin)
+```http
+POST /api/v1/usuarios/tarjetas/
+Authorization: Bearer <token_admin>
+Content-Type: application/json
+
+{
+  "numero": "1234567890123456",
+  "movil": "5351234567",
+  "banco": "metropolitano",
+  "activa": true
+}
+```
+
+### Listar Tarjetas Activas
+```http
+GET /api/v1/usuarios/tarjetas/
+Authorization: Bearer <token>
+```
+**Respuesta:**
+```json
+[
+  {
+    "id": 1,
+    "numero": "1234567890123456",
+    "movil": "5351234567",
+    "banco": "metropolitano",
+    "activa": true
+  }
+]
+```
 
 ---
 

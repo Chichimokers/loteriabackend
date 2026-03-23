@@ -29,6 +29,7 @@ class Usuario(AbstractUser):
 
 class TarjetaSistema(models.Model):
     numero = models.CharField(max_length=20, unique=True)
+    movil = models.CharField(max_length=15)
     banco = models.CharField(max_length=20, choices=[
         ('metropolitano', 'Metropolitano'),
         ('bandec', 'Bandec'),
@@ -42,7 +43,7 @@ class TarjetaSistema(models.Model):
         verbose_name_plural = 'Tarjetas del Sistema'
 
     def __str__(self):
-        return f"{self.numero} ({self.banco})"
+        return f"{self.numero} - {self.movil} ({self.banco})"
 
 
 class SolicitudAcreditacion(models.Model):
