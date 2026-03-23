@@ -111,19 +111,23 @@ class TiradaViewSet(viewsets.ModelViewSet):
         from datetime import date
         hoy = date.today()
         
-        resultado, created = Resultado.objects.update_or_create(
+        if Resultado.objects.filter(tirada=tirada, fecha=hoy).exists():
+            return Response(
+                {'error': 'Esta tirada ya tiene un resultado asignado para hoy'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        resultado = Resultado.objects.create(
             tirada=tirada,
             fecha=hoy,
-            defaults={
-                'pick_3': serializer.validated_data.get('pick_3', ''),
-                'pick_4': serializer.validated_data.get('pick_4', '')
-            }
+            pick_3=serializer.validated_data.get('pick_3', ''),
+            pick_4=serializer.validated_data.get('pick_4', '')
         )
         
         self._calcular_premios(tirada, hoy)
         
         return Response({
-            'message': 'Resultado guardado' if not created else 'Resultado actualizado',
+            'message': 'Resultado guardado',
             'resultado': {
                 'tirada': tirada.loteria.nombre,
                 'hora': str(tirada.hora),
@@ -131,7 +135,7 @@ class TiradaViewSet(viewsets.ModelViewSet):
                 'pick_3': resultado.pick_3,
                 'pick_4': resultado.pick_4
             }
-        })
+        }, status=status.HTTP_201_CREATED)
     
     def _calcular_premios(self, tirada, fecha):
         from apps.apuestas.models import Apuesta
