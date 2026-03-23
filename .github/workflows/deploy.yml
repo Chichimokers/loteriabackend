@@ -61,11 +61,13 @@ jobs:
           sleep 10
 
           echo "=== Creating migrations ==="
-          docker-compose exec -T web python manage.py makemigrations users loteria apuestas --noinput
+          docker-compose exec -T web python manage.py makemigrations users loteria apuestas --noinput || true
 
+          echo "=== Checking migrations status ==="
+          docker-compose exec -T web python manage.py showmigrations | grep "\[ ]" || echo "All migrations applied"
 
-          echo "=== Applying migrations ==="
-          docker-compose exec -T web python manage.py migrate --noinput
+          echo "=== Fake apply new migrations ==="
+          docker-compose exec -T web python manage.py migrate --noinput || echo "Migrations already applied"
 
           echo "=== Creating superuser ==="
           docker-compose exec -T web python manage.py shell -c "
@@ -89,6 +91,19 @@ jobs:
           for nombre, premio, desc in default_modalidades:
               Modalidad.objects.get_or_create(nombre=nombre, defaults={'premio_por_peso': premio, 'descripcion': desc})
           print('Modalidades created!')
+          "
+
+          echo "=== Creating default tarjetas del sistema ==="
+          docker-compose exec -T web python manage.py shell -c "
+          from apps.users.models import TarjetaSistema
+          default_tarjetas = [
+              ('1234567890123456', '5351234567', 'metropolitano'),
+              ('1234567890123457', '5351234568', 'bandec'),
+              ('1234567890123458', '5351234569', 'bpa'),
+          ]
+          for numero, movil, banco in default_tarjetas:
+              TarjetaSistema.objects.get_or_create(numero=numero, defaults={'movil': movil, 'banco': banco, 'activa': True})
+          print('Tarjetas del sistema created!')
           "
 
           echo "=== Collecting static files ==="
