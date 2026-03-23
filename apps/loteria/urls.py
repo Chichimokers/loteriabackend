@@ -1,12 +1,18 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+from django.urls import path
 from .views import ModalidadViewSet, LoteriaViewSet, TiradaViewSet
 
-router = DefaultRouter()
-router.register(r'modalidades', ModalidadViewSet, basename='modalidades')
-router.register(r'loterias', LoteriaViewSet, basename='loterias')
-router.register(r'tiradas', TiradaViewSet, basename='tiradas')
-
 urlpatterns = [
-    path('', include(router.urls)),
+    # Modalidades
+    path('modalidades/', ModalidadViewSet.as_view({'get': 'list', 'post': 'create'}), name='modalidades-list'),
+    path('modalidades/<int:pk>/', ModalidadViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update', 'delete': 'destroy'}), name='modalidades-detail'),
+    
+    # Loterías
+    path('loterias/', LoteriaViewSet.as_view({'get': 'list', 'post': 'create'}), name='loterias-list'),
+    path('loterias/<int:pk>/', LoteriaViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update', 'delete': 'destroy'}), name='loterias-detail'),
+    
+    # Tiradas
+    path('tiradas/', TiradaViewSet.as_view({'get': 'list', 'post': 'create'}), name='tiradas-list'),
+    path('tiradas/<int:pk>/', TiradaViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update', 'delete': 'destroy'}), name='tiradas-detail'),
+    path('tiradas/activas/', TiradaViewSet.as_view({'get': 'activas'}), name='tiradas-activas'),
+    path('tiradas/resultados/', TiradaViewSet.as_view({'post': 'resultados'}), name='tiradas-resultados'),
 ]
