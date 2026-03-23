@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 
-from apps.loteria.models import Loteria, Modalidad, Tirada
+from apps.loteria.models import Loteria, Modalidad, Tirada, Resultado
 from .models import Apuesta
 from .serializers import ApuestaSerializer, ApuestaCreateSerializer
 
@@ -32,6 +32,14 @@ class ApuestaViewSet(viewsets.ModelViewSet):
         
         modalidad = get_object_or_404(Modalidad, id=modalidad_id)
         tirada = get_object_or_404(Tirada, id=tirada_id, activa=True)
+        
+        from datetime import date
+        hoy = date.today()
+        if Resultado.objects.filter(tirada=tirada, fecha=hoy).exists():
+            return Response(
+                {'error': 'No se puede apostar a una tirada que ya tiene resultado'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
         serializer = self.get_serializer(data=request.data)
         serializer.context['modalidad_id'] = modalidad_id
