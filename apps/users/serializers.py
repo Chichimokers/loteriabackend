@@ -76,7 +76,7 @@ class ExtraccionCreateSerializer(serializers.ModelSerializer):
         if data['monto'] <= 0:
             raise serializers.ValidationError({"monto": "El monto debe ser mayor que 0"})
         
-        if usuario.saldo_extraccion < data['monto']:
+        if usuario.saldo_principal < data['monto']:
             raise serializers.ValidationError({"monto": "Saldo insuficiente para extracción"})
         
         return data

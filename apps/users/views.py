@@ -104,6 +104,9 @@ class ExtraccionViewSet(viewsets.ModelViewSet):
         return queryset
     
     def perform_create(self, serializer):
+        monto = serializer.validated_data['monto']
+        self.request.user.saldo_principal -= monto
+        self.request.user.save()
         serializer.save(usuario=self.request.user)
     
     @action(detail=True, methods=['patch'], permission_classes=[IsAuthenticated])
