@@ -6,7 +6,24 @@ from django.utils import timezone
 from django.shortcuts import get_object_or_404
 
 from .models import Modalidad, Loteria, Tirada, Resultado
-from .serializers import ModalidadSerializer, LoteriaSerializer, TiradaSerializer, IngresarResultadoSerializer
+from .serializers import ModalidadSerializer, LoteriaSerializer, TiradaSerializer, ResultadoSerializer, IngresarResultadoSerializer
+
+
+class ResultadoViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Resultado.objects.all()
+    serializer_class = ResultadoSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        queryset = Resultado.objects.all()
+        fecha = self.request.query_params.get('fecha')
+        loteria = self.request.query_params.get('loteria')
+        
+        if fecha:
+            queryset = queryset.filter(fecha=fecha)
+        if loteria:
+            queryset = queryset.filter(tirada__loteria__id=loteria)
+        return queryset
 
 
 class ModalidadViewSet(viewsets.ModelViewSet):

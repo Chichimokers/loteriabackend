@@ -1,7 +1,10 @@
 from django.urls import path
-from .views import ModalidadViewSet, LoteriaViewSet, TiradaViewSet
+from .views import ModalidadViewSet, LoteriaViewSet, TiradaViewSet, ResultadoViewSet
 
 urlpatterns = [
+    # Resultados
+    path('resultados/', ResultadoViewSet.as_view({'get': 'list'}), name='resultados-list'),
+    
     # Modalidades
     path('modalidades/', ModalidadViewSet.as_view({'get': 'list', 'post': 'create'}), name='modalidades-list'),
     path('modalidades/<int:pk>/', ModalidadViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update', 'delete': 'destroy'}), name='modalidades-detail'),
