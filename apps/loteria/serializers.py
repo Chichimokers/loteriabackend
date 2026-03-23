@@ -61,4 +61,14 @@ class IngresarResultadoSerializer(serializers.Serializer):
     def validate(self, data):
         if not data.get('pick_3') and not data.get('pick_4'):
             raise serializers.ValidationError("Debe proporcionar al menos pick_3 o pick_4")
+        
+        pick_3 = data.get('pick_3', '')
+        pick_4 = data.get('pick_4', '')
+        
+        if pick_3 and not pick_3.isdigit():
+            raise serializers.ValidationError({"pick_3": "Solo se permiten dígitos"})
+        
+        if pick_4 and not pick_4.isdigit():
+            raise serializers.ValidationError({"pick_4": "Solo se permiten dígitos"})
+        
         return data

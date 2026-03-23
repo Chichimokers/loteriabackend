@@ -29,6 +29,12 @@ class TarjetaSistemaSerializer(serializers.ModelSerializer):
         model = TarjetaSistema
         fields = ['id', 'numero', 'movil', 'banco', 'activa']
         read_only_fields = ['id']
+    
+    def validate_numero(self, value):
+        import re
+        if not re.match(r'^\d{4}-\d{4}-\d{4}-\d{4}$', value):
+            raise serializers.ValidationError("El formato debe ser xxxx-xxxx-xxxx-xxxx")
+        return value
 
 
 class SolicitudAcreditacionSerializer(serializers.ModelSerializer):
