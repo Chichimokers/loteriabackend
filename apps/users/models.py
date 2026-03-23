@@ -50,7 +50,7 @@ class SolicitudAcreditacion(models.Model):
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
     tarjeta = models.ForeignKey(TarjetaSistema, on_delete=models.CASCADE)
     monto = models.DecimalField(max_digits=10, decimal_places=2)
-    sms_confirmacion = models.CharField(max_length=10)
+    sms_confirmacion = models.CharField(max_length=100)
     id_transferencia = models.CharField(max_length=50, unique=True)
     estado = models.CharField(max_length=20, choices=[
         ('pendiente', 'Pendiente'),
