@@ -13,25 +13,36 @@ class Apuesta(models.Model):
     monto_por_numero = models.DecimalField(max_digits=10, decimal_places=2)
     premiados = models.JSONField(null=True, blank=True)
     premio_total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    fecha = models.DateTimeField(auto_now_add=True)
+    paga = models.BooleanField(default=False)
+    fecha = models.DateField(auto_now_add=True)
 
     class Meta:
         verbose_name = 'Apuesta'
         verbose_name_plural = 'Apuestas'
         ordering = ['-fecha']
+        unique_together = ['usuario', 'tirada', 'fecha']
 
     def __str__(self):
         return f"Apuesta {self.id} - {self.usuario.email}"
 
+    def get_resultado(self):
+        from apps.loteria.models import Resultado
+        return Resultado.objects.filter(tirada=self.tirada, fecha=self.fecha).first()
+
     def calcular_premios(self):
         from decimal import Decimal
+        from apps.loteria.models import Resultado
+        
+        resultado = self.get_resultado()
+        if not resultado or (not resultado.pick_3 and not resultado.pick_4):
+            return Decimal('0')
         
         premios = []
         monto_total_premios = Decimal('0')
 
-        if self.tirada.pick_3:
+        if resultado.pick_3:
             for numero in self.numeros:
-                if self._es_ganador(numero, self.tirada.pick_3):
+                if self._es_ganador(numero, resultado.pick_3):
                     premio = self.monto_por_numero * self.modalidad.premio_por_peso
                     premios.append({
                         "numero": numero,
@@ -40,9 +51,9 @@ class Apuesta(models.Model):
                     })
                     monto_total_premios += premio
 
-        if self.tirada.pick_4:
+        if resultado.pick_4:
             for numero in self.numeros:
-                if self._es_ganador(numero, self.tirada.pick_4):
+                if self._es_ganador(numero, resultado.pick_4):
                     premio = self.monto_por_numero * self.modalidad.premio_por_peso
                     premios.append({
                         "numero": numero,
@@ -53,6 +64,7 @@ class Apuesta(models.Model):
 
         self.premiados = premios
         self.premio_total = monto_total_premios
+        self.paga = monto_total_premios > 0
         return monto_total_premios
 
     def _es_ganador(self, numero, resultado):

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Modalidad, Loteria, Tirada
+from .models import Modalidad, Loteria, Tirada, Resultado
 
 
 class ModalidadSerializer(serializers.ModelSerializer):
@@ -24,52 +24,41 @@ class LoteriaSerializer(serializers.ModelSerializer):
         return ret
 
 
+class ResultadoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Resultado
+        fields = ['id', 'tirada', 'fecha', 'pick_3', 'pick_4']
+        read_only_fields = ['id']
+
+
 class TiradaSerializer(serializers.ModelSerializer):
     loteria_nombre = serializers.CharField(source='loteria.nombre', read_only=True)
+    resultado_hoy = serializers.SerializerMethodField()
 
     class Meta:
         model = Tirada
-        fields = ['id', 'loteria', 'loteria_nombre', 'hora', 'fecha', 'es_recurrente', 'activa', 'pick_3', 'pick_4']
+        fields = ['id', 'loteria', 'loteria_nombre', 'hora', 'activa', 'resultado_hoy']
         read_only_fields = ['id', 'loteria_nombre']
     
-    def validate(self, data):
-        if not data.get('es_recurrente') and not data.get('fecha'):
-            raise serializers.ValidationError("Debe proporcionar una fecha o marcar como recurrente")
-        return data
-    
-    def to_representation(self, instance):
-        from datetime import date, timedelta
-        ret = super().to_representation(instance)
-        
-        # Calcular si la tirada está vigente (hoy o ayer)
+    def get_resultado_hoy(self, obj):
+        from datetime import date
         hoy = date.today()
-        ayer = hoy - timedelta(days=1)
-        
-        # Determinar la fecha de la tirada
-        if instance.es_recurrente:
-            # Para recurrentes, consideramos que la fecha efectiva es ayer (último día)
-            fecha_tirada = ayer
-        else:
-            fecha_tirada = instance.fecha if instance.fecha else None
-        
-        # Si la tirada no es de hoy ni de ayer, ocultar resultados
-        if fecha_tirada and fecha_tirada < ayer:
-            ret['pick_3'] = None
-            ret['pick_4'] = None
-            ret['resultados_publicados'] = False
-        else:
-            # Si tiene resultados, marcar como publicados
-            ret['resultados_publicados'] = bool(instance.pick_3 or instance.pick_4)
-        
-        return ret
+        resultado = obj.resultados.filter(fecha=hoy).first()
+        if resultado:
+            return {
+                'pick_3': resultado.pick_3,
+                'pick_4': resultado.pick_4,
+                'fecha': str(resultado.fecha)
+            }
+        return None
 
 
-class ResultadoSerializer(serializers.Serializer):
+class IngresarResultadoSerializer(serializers.Serializer):
     tirada_id = serializers.IntegerField()
     pick_3 = serializers.CharField(max_length=3, min_length=3, required=False, allow_blank=True)
     pick_4 = serializers.CharField(max_length=4, min_length=4, required=False, allow_blank=True)
 
     def validate(self, data):
         if not data.get('pick_3') and not data.get('pick_4'):
-            raise serializers.ValidationError("Debe proporcionar al menos un resultado (pick_3 o pick_4)")
+            raise serializers.ValidationError("Debe proporcionar al menos pick_3 o pick_4")
         return data

@@ -35,19 +35,30 @@ class Loteria(models.Model):
 class Tirada(models.Model):
     loteria = models.ForeignKey(Loteria, on_delete=models.CASCADE, related_name='tiradas')
     hora = models.TimeField()
-    fecha = models.DateField(null=True, blank=True)
-    es_recurrente = models.BooleanField(default=False, help_text="Si es True, se repite todos los días a la hora indicada")
     activa = models.BooleanField(default=True)
-    pick_3 = models.CharField(max_length=3, null=True, blank=True)
-    pick_4 = models.CharField(max_length=4, null=True, blank=True)
 
     class Meta:
         verbose_name = 'Tirada'
         verbose_name_plural = 'Tiradas'
         ordering = ['hora']
-        unique_together = [['loteria', 'hora', 'fecha'], ['loteria', 'hora']]
+        unique_together = ['loteria', 'hora']
 
     def __str__(self):
-        if self.es_recurrente:
-            return f"{self.loteria.nombre} - {self.hora} (diario)"
-        return f"{self.loteria.nombre} - {self.fecha} {self.hora}"
+        return f"{self.loteria.nombre} - {self.hora}"
+
+
+class Resultado(models.Model):
+    tirada = models.ForeignKey(Tirada, on_delete=models.CASCADE, related_name='resultados')
+    fecha = models.DateField()
+    pick_3 = models.CharField(max_length=3, null=True, blank=True)
+    pick_4 = models.CharField(max_length=3, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Resultado'
+        verbose_name_plural = 'Resultados'
+        unique_together = ['tirada', 'fecha']
+        ordering = ['-fecha', '-tirada__hora']
+
+    def __str__(self):
+        return f"{self.tirada.loteria.nombre} - {self.fecha} {self.tirada.hora}"

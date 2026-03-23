@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Modalidad, Loteria, Tirada
+from .models import Modalidad, Loteria, Tirada, Resultado
 
 
 @admin.register(Modalidad)
@@ -16,6 +16,13 @@ class LoteriaAdmin(admin.ModelAdmin):
 
 @admin.register(Tirada)
 class TiradaAdmin(admin.ModelAdmin):
-    list_display = ['loteria', 'hora', 'fecha', 'activa', 'pick_3', 'pick_4']
-    list_filter = ['activa', 'fecha', 'loteria']
-    search_fields = ['loteria__nombre']
+    list_display = ['loteria', 'hora', 'activa']
+    list_filter = ['activa', 'loteria']
+    ordering = ['hora']
+
+
+@admin.register(Resultado)
+class ResultadoAdmin(admin.ModelAdmin):
+    list_display = ['tirada', 'fecha', 'pick_3', 'pick_4', 'created_at']
+    list_filter = ['fecha', 'tirada__loteria']
+    search_fields = ['tirada__loteria__nombre']

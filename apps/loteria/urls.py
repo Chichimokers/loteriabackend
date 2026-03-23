@@ -14,5 +14,6 @@ urlpatterns = [
     path('tiradas/', TiradaViewSet.as_view({'get': 'list', 'post': 'create'}), name='tiradas-list'),
     path('tiradas/<int:pk>/', TiradaViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update', 'delete': 'destroy'}), name='tiradas-detail'),
     path('tiradas/activas/', TiradaViewSet.as_view({'get': 'activas'}), name='tiradas-activas'),
-    path('tiradas/resultados/', TiradaViewSet.as_view({'post': 'resultados'}), name='tiradas-resultados'),
+    path('tiradas/resultados_hoy/', TiradaViewSet.as_view({'get': 'resultados_hoy'}), name='tiradas-resultados-hoy'),
+    path('tiradas/ingresar_resultado/', TiradaViewSet.as_view({'post': 'ingresar_resultado'}), name='tiradas-ingresar-resultado'),
 ]
