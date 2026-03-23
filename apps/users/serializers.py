@@ -5,8 +5,8 @@ from .models import Usuario, TarjetaSistema, SolicitudAcreditacion, Extraccion
 class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
-        fields = ['id', 'email', 'movil', 'saldo_principal', 'saldo_extraccion', 'tarjeta_bancaria', 'banco', 'fecha_registro']
-        read_only_fields = ['id', 'saldo_principal', 'saldo_extraccion', 'fecha_registro']
+        fields = ['id', 'email', 'movil', 'saldo_principal', 'saldo_extraccion', 'tarjeta_bancaria', 'banco', 'fecha_registro', 'is_staff']
+        read_only_fields = ['id', 'saldo_principal', 'saldo_extraccion', 'fecha_registro', 'is_staff']
 
 
 class UsuarioCreateSerializer(serializers.ModelSerializer):
