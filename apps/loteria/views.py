@@ -87,11 +87,24 @@ class TiradaViewSet(viewsets.ModelViewSet):
         
         tirada = get_object_or_404(Tirada, id=serializer.validated_data['tirada_id'])
         
+        # Validar que la tirada sea del día actual
+        from datetime import date
+        hoy = date.today()
+        
+        if tirada.es_recurrente:
+            pass  # Las tiradas recurrentes siempre se pueden cerrar hoy
+        elif tirada.fecha != hoy:
+            return Response(
+                {'error': 'Solo se pueden ingresar resultados de tiradas del día actual'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
         if serializer.validated_data.get('pick_3'):
             tirada.pick_3 = serializer.validated_data['pick_3']
         if serializer.validated_data.get('pick_4'):
             tirada.pick_4 = serializer.validated_data['pick_4']
         
+        tirada.activa = False  # Marcar como inactiva después de ingresar resultados
         tirada.save()
         
         from apps.apuestas.models import Apuesta
