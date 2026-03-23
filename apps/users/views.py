@@ -51,9 +51,11 @@ class SolicitudAcreditacionViewSet(viewsets.ModelViewSet):
         return SolicitudAcreditacionSerializer
     
     def get_queryset(self):
-        if self.request.user.is_staff:
-            return SolicitudAcreditacion.objects.all()
-        return SolicitudAcreditacion.objects.filter(usuario=self.request.user)
+        queryset = SolicitudAcreditacion.objects.all() if self.request.user.is_staff else SolicitudAcreditacion.objects.filter(usuario=self.request.user)
+        estado = self.request.query_params.get('estado')
+        if estado:
+            queryset = queryset.filter(estado=estado)
+        return queryset
     
     def perform_create(self, serializer):
         serializer.save(usuario=self.request.user)
@@ -95,9 +97,11 @@ class ExtraccionViewSet(viewsets.ModelViewSet):
         return ExtraccionSerializer
     
     def get_queryset(self):
-        if self.request.user.is_staff:
-            return Extraccion.objects.all()
-        return Extraccion.objects.filter(usuario=self.request.user)
+        queryset = Extraccion.objects.all() if self.request.user.is_staff else Extraccion.objects.filter(usuario=self.request.user)
+        estado = self.request.query_params.get('estado')
+        if estado:
+            queryset = queryset.filter(estado=estado)
+        return queryset
     
     def perform_create(self, serializer):
         serializer.save(usuario=self.request.user)
