@@ -1,0 +1,102 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy Loteria Backend
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env file
+        run: |
+          cat > .env << 'EOF'
+          DEBUG=False
+          SECRET_KEY=${{ secrets.SECRET_KEY }}
+          ALLOWED_HOSTS=${{ secrets.ALLOWED_HOSTS }}
+          DB_ENGINE=django.db.backends.postgresql
+          DB_NAME=${{ secrets.DB_NAME }}
+          DB_USER=${{ secrets.DB_USER }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          DB_HOST=loteria_db
+          DB_PORT=5432
+          CSRF_TRUSTED_ORIGINS=${{ secrets.CSRF_TRUSTED_ORIGINS }}
+          EOF
+
+      - name: Stop and remove all containers
+        run: |
+          docker-compose down --remove-orphans || true
+          docker rm -f loteria_web loteria_db 2>/dev/null || true
+
+      - name: Build all containers
+        run: docker-compose build
+
+      - name: Start database
+        run: docker-compose up -d db
+
+      - name: Wait for database to be ready
+        run: |
+          echo "Waiting for PostgreSQL..."
+          sleep 15
+          until docker-compose exec -T db pg_isready -U loteria_user -p 5432;  do
+            sleep 3
+          done
+          echo "PostgreSQL ready!"
+
+      - name: Create database if not exists
+        run: |
+          docker-compose exec -T db psql -U loteria_user -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'loteria'" | grep -q 1 || \
+          docker-compose exec -T db psql -U loteria_user -d postgres -c "CREATE DATABASE loteria"
+          echo "Database ready!"
+
+      - name: Run migrations and setup
+        run: |
+          docker-compose up -d web
+          sleep 10
+
+          echo "=== Creating migrations ==="
+          docker-compose exec -T web python manage.py makemigrations --noinput
+
+          echo "=== Applying migrations ==="
+          docker-compose exec -T web python manage.py migrate --noinput
+
+          echo "=== Creating superuser ==="
+          docker-compose exec -T web python manage.py shell -c "
+          from apps.users.models import Usuario
+          if not Usuario.objects.filter(email='admin@admin.com').exists():
+              Usuario.objects.create_superuser(username='admin', email='admin@admin.com', password='admin123', movil='1234567890', tarjeta_bancaria='1234567890123456', banco='metropolitano')
+              print('Superuser created: admin@admin.com / admin123')
+          else:
+              print('Superuser already exists')
+          "
+
+          echo "=== Creating default modalidades ==="
+          docker-compose exec -T web python manage.py shell -c "
+          from apps.loteria.models import Modalidad
+          default_modalidades = [
+              ('fijo', 600, 'Premio fijo - primer dígito'),
+              ('corrido', 600, 'Premio corrido - dígitos en cualquier posición'),
+              ('parle', 600, 'Premio habló - números exactos'),
+              ('pick_3', 600, 'Pick 3 - tres dígitos exactos'),
+          ]
+          for nombre, premio, desc in default_modalidades:
+              Modalidad.objects.get_or_create(nombre=nombre, defaults={'premio_por_peso': premio, 'descripcion': desc})
+          print('Modalidades created!')
+          "
+
+          echo "=== Collecting static files ==="
+          docker-compose exec -T web python manage.py collectstatic --noinput
+
+      - name: Verify deployment
+        run: |
+          echo "=== Container Status ==="
+          docker-compose ps
+          echo ""
+          echo "=== Web Logs ==="
+          docker-compose logs --tail=30 web

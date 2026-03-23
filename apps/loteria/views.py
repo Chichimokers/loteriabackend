@@ -1,0 +1,108 @@
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from django.utils import timezone
+from datetime import datetime
+
+from .models import Modalidad, Loteria, Tirada
+from .serializers import ModalidadSerializer, LoteriaSerializer, TiradaSerializer, ResultadoSerializer
+
+
+class ModalidadViewSet(viewsets.ModelViewSet):
+    queryset = Modalidad.objects.all()
+    serializer_class = ModalidadSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        if self.action in ['list', 'retrieve']:
+            return Modalidad.objects.all()
+        if not self.request.user.is_staff:
+            return Modalidad.objects.none()
+        return Modalidad.objects.all()
+
+
+class LoteriaViewSet(viewsets.ModelViewSet):
+    queryset = Loteria.objects.all()
+    serializer_class = LoteriaSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        if self.action in ['list', 'retrieve']:
+            return Loteria.objects.filter(activa=True)
+        if not self.request.user.is_staff:
+            return Loteria.objects.none()
+        return Loteria.objects.all()
+
+
+class TiradaViewSet(viewsets.ModelViewSet):
+    queryset = Tirada.objects.all()
+    serializer_class = TiradaSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        queryset = Tirada.objects.all()
+        
+        if self.action in ['list', 'retrieve']:
+            loteria_id = self.request.query_params.get('loteria_id')
+            fecha = self.request.query_params.get('fecha')
+            activa = self.request.query_params.get('activa')
+            
+            if loteria_id:
+                queryset = queryset.filter(loteria_id=loteria_id)
+            if fecha:
+                queryset = queryset.filter(fecha=fecha)
+            if activa is not None:
+                queryset = queryset.filter(activa=activa.lower() == 'true')
+            
+            return queryset
+        
+        if not self.request.user.is_staff:
+            return Tirada.objects.none()
+        return queryset
+    
+    @action(detail=False, methods=['get'])
+    def activas(self, request):
+        now = timezone.now()
+        tiradas = Tirada.objects.filter(
+            activa=True,
+            fecha__gte=now.date()
+        ).filter(
+            loteria__activa=True
+        ).order_by('fecha', 'hora')
+        
+        serializer = self.get_serializer(tiradas, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    def resultados(self, request):
+        if not request.user.is_staff:
+            return Response({'error': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = ResultadoSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        tirada = get_object_or_404(Tirada, id=serializer.validated_data['tirada_id'])
+        
+        if serializer.validated_data.get('pick_3'):
+            tirada.pick_3 = serializer.validated_data['pick_3']
+        if serializer.validated_data.get('pick_4'):
+            tirada.pick_4 = serializer.validated_data['pick_4']
+        
+        tirada.save()
+        
+        from apps.apuestas.models import Apuesta
+        apuestas = Apuesta.objects.filter(tirada=tirada)
+        for apuesta in apuestas:
+            apuesta.calcular_premios()
+            apuesta.save()
+            
+            if apuesta.premio_total > 0:
+                usuario = apuesta.usuario
+                usuario.saldo_principal += apuesta.premio_total
+                usuario.save()
+        
+        return Response(TiradaSerializer(tirada).data)
+
+
+from django.shortcuts import get_object_or_404
