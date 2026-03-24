@@ -3,6 +3,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from datetime import date
 
 from apps.loteria.models import Loteria, Modalidad, Tirada, Resultado
 from .models import Apuesta
@@ -33,11 +35,21 @@ class ApuestaViewSet(viewsets.ModelViewSet):
         modalidad = get_object_or_404(Modalidad, id=modalidad_id)
         tirada = get_object_or_404(Tirada, id=tirada_id, activa=True)
         
-        from datetime import date
         hoy = date.today()
+        ahora = timezone.now()
+        
         if Resultado.objects.filter(tirada=tirada, fecha=hoy).exists():
             return Response(
                 {'error': 'No se puede apostar a una tirada que ya tiene resultado'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        hora_actual = ahora.time()
+        hora_tirada = tirada.hora
+        
+        if hora_actual >= hora_tirada:
+            return Response(
+                {'error': f'No se puede apostar. La tirada es a las {hora_tirada} y ya pasaron las {hora_actual}'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -52,7 +64,6 @@ class ApuestaViewSet(viewsets.ModelViewSet):
         if request.user.saldo_principal < monto_total:
             return Response({'error': 'Saldo insuficiente'}, status=status.HTTP_400_BAD_REQUEST)
         
-        from datetime import date
         apuesta = Apuesta.objects.create(
             usuario=request.user,
             loteria=tirada.loteria,
