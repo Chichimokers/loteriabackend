@@ -56,7 +56,7 @@ class TiradaSerializer(serializers.ModelSerializer):
 class IngresarResultadoSerializer(serializers.Serializer):
     tirada_id = serializers.IntegerField()
     pick_3 = serializers.CharField(max_length=3, min_length=3, required=False, allow_blank=True)
-    pick_4 = serializers.CharField(max_length=3, min_length=3, required=False, allow_blank=True)
+    pick_4 = serializers.CharField(max_length=4, min_length=4, required=False, allow_blank=True)
 
     def validate(self, data):
         if not data.get('pick_3') and not data.get('pick_4'):
