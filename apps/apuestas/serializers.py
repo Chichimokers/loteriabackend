@@ -28,7 +28,7 @@ class ApuestaSerializer(serializers.ModelSerializer):
 
 class ApuestaCreateSerializer(serializers.Serializer):
     tirada_id = serializers.IntegerField()
-    numeros = serializers.ListField(child=serializers.CharField())
+    numeros = serializers.ListField()
     monto_por_numero = serializers.DecimalField(max_digits=10, decimal_places=2)
 
     def validate(self, data):
@@ -54,43 +54,51 @@ class ApuestaCreateSerializer(serializers.Serializer):
 
         if modalidad.nombre == 'fijo':
             for n in numeros:
-                if len(n) != 2 or not n.isdigit():
+                if not isinstance(n, str) or len(n) != 2 or not n.isdigit():
                     raise serializers.ValidationError(
                         {"numeros": f"Fijo requiere números de 2 dígitos. '{n}' no es válido"}
                     )
 
         elif modalidad.nombre == 'corrido':
             for n in numeros:
-                if len(n) != 2 or not n.isdigit():
+                if not isinstance(n, str) or len(n) != 2 or not n.isdigit():
                     raise serializers.ValidationError(
                         {"numeros": f"Corrido requiere números de 2 dígitos. '{n}' no es válido"}
                     )
 
         elif modalidad.nombre == 'pick_3':
             for n in numeros:
-                if len(n) != 3 or not n.isdigit():
+                if not isinstance(n, str) or len(n) != 3 or not n.isdigit():
                     raise serializers.ValidationError(
                         {"numeros": f"Pick 3 requiere números de 3 dígitos. '{n}' no es válido"}
                     )
 
         elif modalidad.nombre == 'parle':
+            parejas_normalizadas = set()
             for pareja in numeros:
                 if not isinstance(pareja, list) or len(pareja) != 2:
                     raise serializers.ValidationError(
                         {"numeros": "Parlé requiere parejas de 2 números. Ejemplo: [['37','75']]"}
                     )
                 for n in pareja:
-                    if len(n) != 2 or not n.isdigit():
+                    if not isinstance(n, str) or len(n) != 2 or not n.isdigit():
                         raise serializers.ValidationError(
                             {"numeros": f"Cada número del parlé debe tener 2 dígitos. '{n}' no es válido"}
                         )
+                
+                pareja_normalizada = tuple(sorted(pareja))
+                if pareja_normalizada in parejas_normalizadas:
+                    raise serializers.ValidationError(
+                        {"numeros": f"La pareja {pareja} ya existe (o su inversa). No se permiten duplicados."}
+                    )
+                parejas_normalizadas.add(pareja_normalizada)
 
         return data
 
 
 class CandadoCreateSerializer(serializers.Serializer):
     tirada_id = serializers.IntegerField()
-    numeros = serializers.ListField(child=serializers.CharField())
+    numeros = serializers.ListField()
     monto_por_numero = serializers.DecimalField(max_digits=10, decimal_places=2)
 
     def validate(self, data):
@@ -106,10 +114,16 @@ class CandadoCreateSerializer(serializers.Serializer):
         if len(numeros) < 2:
             raise serializers.ValidationError({"numeros": "Candado requiere mínimo 2 números"})
         
+        numeros_unicos = set()
         for n in numeros:
-            if len(n) != 2 or not n.isdigit():
+            if not isinstance(n, str) or len(n) != 2 or not n.isdigit():
                 raise serializers.ValidationError(
                     {"numeros": f"Candado requiere números de 2 dígitos. '{n}' no es válido"}
                 )
+            if n in numeros_unicos:
+                raise serializers.ValidationError(
+                    {"numeros": f"El número '{n}' está duplicado. No se permiten duplicados en candado."}
+                )
+            numeros_unicos.add(n)
 
         return data

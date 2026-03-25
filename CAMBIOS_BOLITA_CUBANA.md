@@ -41,12 +41,21 @@ Valores extraídos:
 ### 3. `apps/apuestas/serializers.py`
 **Cambios:**
 1. Reescrito `ApuestaCreateSerializer` para validar según modalidad
-2. Agregado `CandadoCreateSerializer` para el endpoint de candado
+2. Cambiado `numeros = serializers.ListField()` para aceptar arrays anidados (parlé)
+3. Agregada validación de parejas duplicadas en parlé (ej: `["12","34"]` y `["34","12"]` no se permiten)
+4. Agregado `CandadoCreateSerializer` para el endpoint de candado
+5. Agregada validación de números duplicados en candado
 
 ### 4. `apps/apuestas/views.py`
 **Cambios:**
 1. Agregado método `_validar_tirada()` para reutilizar validaciones
 2. Agregado endpoint `@action candado` que genera combinaciones automáticamente
+
+### 5. `apps/apuestas/urls.py`
+**Cambio:** Agregada ruta `candado/`
+
+### 6. `.github/workflows/deploy.yml`
+**Cambio:** Modalidades por defecto actualizadas
 
 ---
 
@@ -54,17 +63,17 @@ Valores extraídos:
 
 ### Modalidades normales: `POST /api/v1/apuestas/`
 
-**FIJO (2 dígitos):**
+**FIJO (múltiples números de 2 dígitos):**
 ```json
 {
     "modalidad_id": 1,
     "tirada_id": 1,
-    "numeros": ["37", "88"],
+    "numeros": ["37", "88", "12"],
     "monto_por_numero": "10.00"
 }
 ```
 
-**CORRIDO (2 dígitos):**
+**CORRIDO (múltiples números de 2 dígitos):**
 ```json
 {
     "modalidad_id": 2,
@@ -74,7 +83,7 @@ Valores extraídos:
 }
 ```
 
-**PICK 3 (3 dígitos):**
+**PICK 3 (múltiples números de 3 dígitos):**
 ```json
 {
     "modalidad_id": 3,
@@ -84,7 +93,7 @@ Valores extraídos:
 }
 ```
 
-**PARLÉ (parejas directas de 2 dígitos):**
+**PARLÉ (parejas de 2 dígitos - NO se permiten duplicados ni inversas):**
 ```json
 {
     "modalidad_id": 4,
@@ -94,11 +103,27 @@ Valores extraídos:
 }
 ```
 
+**Ejemplo de error en parlé (parejas duplicadas):**
+```json
+{
+    "modalidad_id": 4,
+    "tirada_id": 1,
+    "numeros": [["12", "34"], ["34", "12"]],
+    "monto_por_numero": "10.00"
+}
+```
+Respuesta:
+```json
+{
+    "numeros": ["La pareja ['34', '12'] ya existe (o su inversa). No se permiten duplicados."]
+}
+```
+
 ---
 
 ### Candado (endpoint separado): `POST /api/v1/apuestas/candado/`
 
-**CANDADO (array de números de 2 dígitos, genera combinaciones automáticas):**
+**CANDADO (array de números de 2 dígitos, genera combinaciones automáticas - NO se permiten duplicados):**
 ```json
 {
     "tirada_id": 1,
@@ -112,7 +137,32 @@ Resultado: C(4,2) = 6 combinaciones generadas:
 
 Monto total: 10.00 × 6 = 60.00
 
-La apuesta se crea con modalidad `parle` y el campo `combinaciones_generadas` contiene las parejas generadas.
+**Ejemplo de error en candado (números duplicados):**
+```json
+{
+    "tirada_id": 1,
+    "numeros": ["37", "75", "37", "58"],
+    "monto_por_numero": "10.00"
+}
+```
+Respuesta:
+```json
+{
+    "numeros": ["El número '37' está duplicado. No se permiten duplicados en candado."]
+}
+```
+
+---
+
+## VALIDACIONES IMPLEMENTADAS
+
+| Modalidad | Validación |
+|-----------|------------|
+| **Fijo** | Array de strings de 2 dígitos |
+| **Corrido** | Array de strings de 2 dígitos |
+| **Pick 3** | Array de strings de 3 dígitos |
+| **Parlé** | Array de parejas de 2 dígitos. No se permiten parejas duplicadas ni inversas (ej: `["12","34"]` = `["34","12"]`) |
+| **Candado** | Array de strings de 2 dígitos. No se permiten números duplicados |
 
 ---
 
@@ -148,3 +198,5 @@ La apuesta se crea con modalidad `parle` y el campo `combinaciones_generadas` co
 2. **Los premios se configuran via admin** en el campo `premio_por_peso` de cada modalidad.
 3. **El candado genera combinaciones C(n,2)** automáticamente a partir de los números enviados.
 4. **La apuesta de candado se guarda como parlé** con el campo `combinaciones_generadas` lleno.
+5. **No se permiten parejas duplicadas en parlé** (incluyendo inversas).
+6. **No se permiten números duplicados en candado.**
