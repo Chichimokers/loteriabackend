@@ -5,5 +5,5 @@ urlpatterns = [
     path('', ApuestaViewSet.as_view({'get': 'list', 'post': 'create'}), name='apuestas-list'),
     path('<int:pk>/', ApuestaViewSet.as_view({'get': 'retrieve'}), name='apuestas-detail'),
     path('mis_apuestas/', ApuestaViewSet.as_view({'get': 'mis_apuestas'}), name='apuestas-mias'),
-    path('<int:pk>/calcular_premios/', ApuestaViewSet.as_view({'get': 'calcular_premios'}), name='apuestas-calcular'),
+    path('candado/', ApuestaViewSet.as_view({'post': 'candado'}), name='apuestas-candado'),
 ]

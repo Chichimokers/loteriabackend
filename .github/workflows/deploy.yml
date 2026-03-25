@@ -84,10 +84,10 @@ jobs:
           docker-compose exec -T web python manage.py shell -c "
           from apps.loteria.models import Modalidad
           default_modalidades = [
-              ('fijo', 600, 'Premio fijo - primer dígito'),
-              ('corrido', 600, 'Premio corrido - dígitos en cualquier posición'),
-              ('parle', 600, 'Premio habló - números exactos'),
-              ('pick_3', 600, 'Pick 3 - tres dígitos exactos'),
+              ('fijo', 600, 'Premio fijo - 2 dígitos contra pick_3'),
+              ('corrido', 600, 'Premio corrido - 2 dígitos contra pick_4'),
+              ('parle', 600, 'Premio parlé - parejas de 2 dígitos'),
+              ('pick_3', 600, 'Pick 3 - 3 dígitos contra centena'),
           ]
           for nombre, premio, desc in default_modalidades:
               Modalidad.objects.get_or_create(nombre=nombre, defaults={'premio_por_peso': premio, 'descripcion': desc})
