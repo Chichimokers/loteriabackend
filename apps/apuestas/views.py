@@ -10,6 +10,7 @@ from itertools import combinations
 from apps.loteria.models import Loteria, Modalidad, Tirada, Resultado
 from .models import Apuesta
 from .serializers import ApuestaSerializer, ApuestaCreateSerializer, CandadoCreateSerializer
+from apps.notificaciones.views import crear_notificacion
 
 
 class ApuestaViewSet(viewsets.ModelViewSet):
@@ -120,6 +121,21 @@ class ApuestaViewSet(viewsets.ModelViewSet):
         request.user.saldo_principal -= monto_total
         request.user.save()
         
+        crear_notificacion(
+            usuario=None,
+            tipo='apuesta_creada',
+            titulo='Nueva apuesta registrada',
+            mensaje=f'{request.user.email} apostó {monto_total} CUP en {tirada.loteria.nombre} ({modalidad.nombre})',
+            datos={
+                'usuario_email': request.user.email,
+                'loteria': tirada.loteria.nombre,
+                'modalidad': modalidad.nombre,
+                'tirada_hora': str(tirada.hora),
+                'numeros': numeros,
+                'monto_total': str(monto_total)
+            }
+        )
+        
         return Response(ApuestaSerializer(apuesta).data, status=status.HTTP_201_CREATED)
     
     @action(detail=False, methods=['post'])
@@ -180,6 +196,22 @@ class ApuestaViewSet(viewsets.ModelViewSet):
         
         request.user.saldo_principal -= monto_total
         request.user.save()
+        
+        crear_notificacion(
+            usuario=None,
+            tipo='apuesta_creada',
+            titulo='Nueva apuesta de candado registrada',
+            mensaje=f'{request.user.email} apostó {monto_total} CUP en candado de {tirada.loteria.nombre}',
+            datos={
+                'usuario_email': request.user.email,
+                'loteria': tirada.loteria.nombre,
+                'modalidad': 'candado',
+                'tirada_hora': str(tirada.hora),
+                'numeros': numeros,
+                'combinaciones': len(combinaciones_generadas),
+                'monto_total': str(monto_total)
+            }
+        )
         
         return Response(ApuestaSerializer(apuesta).data, status=status.HTTP_201_CREATED)
     

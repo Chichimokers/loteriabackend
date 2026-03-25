@@ -4,9 +4,11 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
+from datetime import date
 
 from .models import Modalidad, Loteria, Tirada, Resultado
 from .serializers import ModalidadSerializer, LoteriaSerializer, TiradaSerializer, ResultadoSerializer, IngresarResultadoSerializer
+from apps.notificaciones.views import crear_notificacion
 
 
 class ResultadoViewSet(viewsets.ReadOnlyModelViewSet):
@@ -78,7 +80,6 @@ class TiradaViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def resultados_hoy(self, request):
-        from datetime import date
         hoy = date.today()
         
         tiradas = self.get_queryset().filter(activa=True)
@@ -108,7 +109,6 @@ class TiradaViewSet(viewsets.ModelViewSet):
         
         tirada = get_object_or_404(Tirada, id=serializer.validated_data['tirada_id'])
         
-        from datetime import date
         hoy = date.today()
         
         if Resultado.objects.filter(tirada=tirada, fecha=hoy).exists():
@@ -124,7 +124,7 @@ class TiradaViewSet(viewsets.ModelViewSet):
             pick_4=serializer.validated_data.get('pick_4', '')
         )
         
-        self._calcular_premios(tirada, hoy)
+        self._calcular_premios(tirada, hoy, resultado)
         
         return Response({
             'message': 'Resultado guardado',
@@ -137,19 +137,76 @@ class TiradaViewSet(viewsets.ModelViewSet):
             }
         }, status=status.HTTP_201_CREATED)
     
-    def _calcular_premios(self, tirada, fecha):
+    def _calcular_premios(self, tirada, fecha, resultado):
         from apps.apuestas.models import Apuesta
         
         apuestas = Apuesta.objects.filter(tirada=tirada, fecha=fecha)
+        
+        usuarios_notificados = set()
         
         for apuesta in apuestas:
             apuesta.calcular_premios()
             apuesta.save()
             
+            usuario = apuesta.usuario
+            
             if apuesta.premio_total > 0:
-                usuario = apuesta.usuario
                 usuario.saldo_principal += apuesta.premio_total
                 usuario.save()
+                
+                crear_notificacion(
+                    usuario=usuario,
+                    tipo='apuesta_ganadora',
+                    titulo='¡Felicidades! Apuesta ganadora',
+                    mensaje=f'Tu apuesta en {tirada.loteria.nombre} ({apuesta.modalidad.nombre}) ganó {apuesta.premio_total} CUP',
+                    datos={
+                        'loteria': tirada.loteria.nombre,
+                        'modalidad': apuesta.modalidad.nombre,
+                        'tirada_hora': str(tirada.hora),
+                        'numeros': apuesta.numeros,
+                        'premio_total': str(apuesta.premio_total),
+                        'nuevo_saldo': str(usuario.saldo_principal)
+                    }
+                )
+                usuarios_notificados.add(usuario.id)
+            else:
+                crear_notificacion(
+                    usuario=usuario,
+                    tipo='apuesta_perdedora',
+                    titulo='Apuesta sin premio',
+                    mensaje=f'Tu apuesta en {tirada.loteria.nombre} ({apuesta.modalidad.nombre}) no obtuvo premio',
+                    datos={
+                        'loteria': tirada.loteria.nombre,
+                        'modalidad': apuesta.modalidad.nombre,
+                        'tirada_hora': str(tirada.hora),
+                        'numeros': apuesta.numeros,
+                        'pick_3': resultado.pick_3,
+                        'pick_4': resultado.pick_4
+                    }
+                )
+                usuarios_notificados.add(usuario.id)
+        
+        from apps.apuestas.models import Apuesta
+        usuarios_con_apuestas = Apuesta.objects.filter(
+            tirada=tirada, 
+            fecha=fecha
+        ).values_list('usuario', flat=True).distinct()
+        
+        from apps.users.models import Usuario
+        for usuario in Usuario.objects.filter(id__in=usuarios_con_apuestas):
+            if usuario.id not in usuarios_notificados:
+                crear_notificacion(
+                    usuario=usuario,
+                    tipo='resultado_publicado',
+                    titulo='Resultado publicado',
+                    mensaje=f'El resultado de {tirada.loteria.nombre} ({tirada.hora}) ha sido publicado',
+                    datos={
+                        'loteria': tirada.loteria.nombre,
+                        'tirada_hora': str(tirada.hora),
+                        'pick_3': resultado.pick_3,
+                        'pick_4': resultado.pick_4
+                    }
+                )
 
 
 from django.db.models import Sum, Count
@@ -183,7 +240,6 @@ class MetricasViewSet(viewsets.ViewSet):
             .first()
         )
         
-        from datetime import date
         hoy = date.today()
         
         acreditado_hoy = (

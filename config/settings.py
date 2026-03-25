@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'apps.users',
     'apps.loteria',
     'apps.apuestas',
+    'apps.notificaciones',
 ]
 
 MIDDLEWARE = [

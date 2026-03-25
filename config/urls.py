@@ -39,6 +39,7 @@ urlpatterns = [
     path('api/v1/usuarios/', include('apps.users.urls')),
     path('api/v1/loterias/', include('apps.loteria.urls')),
     path('api/v1/apuestas/', include('apps.apuestas.urls')),
+    path('api/v1/notificaciones/', include('apps.notificaciones.urls')),
     path('api/v1/admin/metricas/', MetricasViewSet.as_view({'get': 'list'}), name='admin-metricas'),
     path('api/v1/admin/', admin.site.urls),
 ]

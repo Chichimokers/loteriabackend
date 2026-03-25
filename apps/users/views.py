@@ -11,6 +11,7 @@ from .serializers import (
     SolicitudAcreditacionSerializer, SolicitudAcreditacionCreateSerializer,
     ExtraccionSerializer, ExtraccionCreateSerializer
 )
+from apps.notificaciones.views import crear_notificacion
 
 
 @api_view(['GET', 'PATCH'])
@@ -38,6 +39,15 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        
+        crear_notificacion(
+            usuario=None,
+            tipo='nuevo_usuario',
+            titulo='Nuevo usuario registrado',
+            mensaje=f'El usuario {user.email} se ha registrado en el sistema',
+            datos={'email': user.email, 'movil': user.movil, 'banco': user.banco}
+        )
+        
         return Response(UsuarioSerializer(user).data, status=status.HTTP_201_CREATED)
     
     @action(detail=True, methods=['patch'], permission_classes=[IsAuthenticated])
@@ -85,6 +95,20 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         
         usuario.save()
         
+        crear_notificacion(
+            usuario=usuario,
+            tipo='saldo_ajustado',
+            titulo='Saldo ajustado por administrador',
+            mensaje=f'Tu saldo {tipo} fue {"aumentado" if operacion == "sumar" else "reducido"} en {monto} CUP por un administrador',
+            datos={
+                'tipo': tipo,
+                'operacion': operacion,
+                'monto': monto,
+                'saldo_principal': str(usuario.saldo_principal),
+                'saldo_extraccion': str(usuario.saldo_extraccion)
+            }
+        )
+        
         return Response({
             'message': f'Saldo {tipo} actualizado correctamente',
             'usuario': usuario.email,
@@ -97,7 +121,7 @@ class TarjetaSistemaViewSet(viewsets.ModelViewSet):
     queryset = TarjetaSistema.objects.all()
     serializer_class = TarjetaSistemaSerializer
     permission_classes = [IsAuthenticated]
-    
+
 
 class SolicitudAcreditacionViewSet(viewsets.ModelViewSet):
     queryset = SolicitudAcreditacion.objects.all()
@@ -116,7 +140,20 @@ class SolicitudAcreditacionViewSet(viewsets.ModelViewSet):
         return queryset
     
     def perform_create(self, serializer):
-        serializer.save(usuario=self.request.user)
+        acreditacion = serializer.save(usuario=self.request.user)
+        
+        crear_notificacion(
+            usuario=None,
+            tipo='acreditacion_pendiente',
+            titulo='Nueva solicitud de acreditación',
+            mensaje=f'El usuario {self.request.user.email} solicita acreditación de {acreditacion.monto} CUP',
+            datos={
+                'usuario_email': self.request.user.email,
+                'monto': str(acreditacion.monto),
+                'tarjeta': acreditacion.tarjeta.numero,
+                'id_transferencia': acreditacion.id_transferencia
+            }
+        )
     
     @action(detail=True, methods=['patch'], permission_classes=[IsAuthenticated])
     def aprobar(self, request, pk=None):
@@ -131,6 +168,17 @@ class SolicitudAcreditacionViewSet(viewsets.ModelViewSet):
         usuario.saldo_principal += acreditacion.monto
         usuario.save()
         
+        crear_notificacion(
+            usuario=usuario,
+            tipo='acreditacion_aprobada',
+            titulo='Acreditación aprobada',
+            mensaje=f'Tu solicitud de acreditación por {acreditacion.monto} CUP ha sido aprobada',
+            datos={
+                'monto': str(acreditacion.monto),
+                'nuevo_saldo': str(usuario.saldo_principal)
+            }
+        )
+        
         return Response(SolicitudAcreditacionSerializer(acreditacion).data)
     
     @action(detail=True, methods=['patch'], permission_classes=[IsAuthenticated])
@@ -141,6 +189,14 @@ class SolicitudAcreditacionViewSet(viewsets.ModelViewSet):
         acreditacion = self.get_object()
         acreditacion.estado = 'rechazada'
         acreditacion.save()
+        
+        crear_notificacion(
+            usuario=acreditacion.usuario,
+            tipo='acreditacion_rechazada',
+            titulo='Acreditación rechazada',
+            mensaje=f'Tu solicitud de acreditación por {acreditacion.monto} CUP ha sido rechazada',
+            datos={'monto': str(acreditacion.monto)}
+        )
         
         return Response(SolicitudAcreditacionSerializer(acreditacion).data)
 
@@ -167,7 +223,18 @@ class ExtraccionViewSet(viewsets.ModelViewSet):
         usuario.saldo_principal -= monto
         usuario.saldo_extraccion += monto
         usuario.save()
-        serializer.save(usuario=self.request.user)
+        extraccion = serializer.save(usuario=self.request.user)
+        
+        crear_notificacion(
+            usuario=None,
+            tipo='extraccion_pendiente',
+            titulo='Nueva solicitud de extracción',
+            mensaje=f'El usuario {usuario.email} solicita extracción de {monto} CUP',
+            datos={
+                'usuario_email': usuario.email,
+                'monto': str(monto)
+            }
+        )
     
     @action(detail=True, methods=['patch'], permission_classes=[IsAuthenticated])
     def aprobar(self, request, pk=None):
@@ -181,6 +248,17 @@ class ExtraccionViewSet(viewsets.ModelViewSet):
         usuario = extraccion.usuario
         usuario.saldo_extraccion -= extraccion.monto
         usuario.save()
+        
+        crear_notificacion(
+            usuario=usuario,
+            tipo='extraccion_aprobada',
+            titulo='Extracción aprobada',
+            mensaje=f'Tu solicitud de extracción por {extraccion.monto} CUP ha sido aprobada. El dinero ha sido enviado.',
+            datos={
+                'monto': str(extraccion.monto),
+                'nuevo_saldo_extraccion': str(usuario.saldo_extraccion)
+            }
+        )
         
         return Response(ExtraccionSerializer(extraccion).data)
     
@@ -197,5 +275,16 @@ class ExtraccionViewSet(viewsets.ModelViewSet):
         usuario.saldo_extraccion -= extraccion.monto
         usuario.saldo_principal += extraccion.monto
         usuario.save()
+        
+        crear_notificacion(
+            usuario=usuario,
+            tipo='extraccion_rechazada',
+            titulo='Extracción rechazada',
+            mensaje=f'Tu solicitud de extracción por {extraccion.monto} CUP ha sido rechazada. El dinero ha sido devuelto a tu saldo principal.',
+            datos={
+                'monto': str(extraccion.monto),
+                'nuevo_saldo_principal': str(usuario.saldo_principal)
+            }
+        )
         
         return Response(ExtraccionSerializer(extraccion).data)
