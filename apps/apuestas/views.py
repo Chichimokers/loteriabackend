@@ -38,6 +38,31 @@ class ApuestaViewSet(viewsets.ModelViewSet):
         
         return None
 
+    def _obtener_numeros_previos(self, usuario, tirada, fecha):
+        apuestas_previas = Apuesta.objects.filter(
+            usuario=usuario,
+            tirada=tirada,
+            fecha=fecha
+        )
+        
+        numeros_previos = set()
+        parejas_previas = set()
+        
+        for apuesta in apuestas_previas:
+            if apuesta.modalidad.nombre in ['fijo', 'corrido', 'pick_3']:
+                for n in apuesta.numeros:
+                    numeros_previos.add(n)
+            elif apuesta.modalidad.nombre == 'parle':
+                if apuesta.combinaciones_generadas:
+                    for pareja in apuesta.combinaciones_generadas:
+                        parejas_previas.add(tuple(sorted(pareja)))
+                else:
+                    for pareja in apuesta.numeros:
+                        if isinstance(pareja, list) and len(pareja) == 2:
+                            parejas_previas.add(tuple(sorted(pareja)))
+        
+        return numeros_previos, parejas_previas
+
     def create(self, request, *args, **kwargs):
         modalidad_id = request.data.get('modalidad_id')
         tirada_id = request.data.get('tirada_id')
@@ -59,6 +84,24 @@ class ApuestaViewSet(viewsets.ModelViewSet):
         numeros = serializer.validated_data['numeros']
         monto_por_numero = serializer.validated_data['monto_por_numero']
         monto_total = monto_por_numero * len(numeros)
+        
+        numeros_previos, parejas_previas = self._obtener_numeros_previos(request.user, tirada, date.today())
+        
+        if modalidad.nombre in ['fijo', 'corrido', 'pick_3']:
+            for n in numeros:
+                if n in numeros_previos:
+                    return Response(
+                        {'error': f'El número {n} ya fue apostado hoy en esta tirada'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+        elif modalidad.nombre == 'parle':
+            for pareja in numeros:
+                pareja_norm = tuple(sorted(pareja))
+                if pareja_norm in parejas_previas:
+                    return Response(
+                        {'error': f'La pareja {pareja} ya fue apostada hoy en esta tirada'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
         
         if request.user.saldo_principal < monto_total:
             return Response({'error': 'Saldo insuficiente'}, status=status.HTTP_400_BAD_REQUEST)
@@ -102,6 +145,23 @@ class ApuestaViewSet(viewsets.ModelViewSet):
         combinaciones = list(combinations(numeros, 2))
         combinaciones_generadas = [list(c) for c in combinaciones]
         monto_total = monto_por_numero * len(combinaciones_generadas)
+        
+        numeros_previos, parejas_previas = self._obtener_numeros_previos(request.user, tirada, date.today())
+        
+        for n in numeros:
+            if n in numeros_previos:
+                return Response(
+                    {'error': f'El número {n} ya fue apostado hoy en esta tirada'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        for pareja in combinaciones:
+            pareja_norm = tuple(sorted(pareja))
+            if pareja_norm in parejas_previas:
+                return Response(
+                    {'error': f'La pareja {list(pareja)} ya fue apostada hoy en esta tirada'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         
         if request.user.saldo_principal < monto_total:
             return Response({'error': 'Saldo insuficiente'}, status=status.HTTP_400_BAD_REQUEST)

@@ -164,6 +164,27 @@ Respuesta:
 | **Parlé** | Array de parejas de 2 dígitos. No se permiten parejas duplicadas ni inversas (ej: `["12","34"]` = `["34","12"]`) |
 | **Candado** | Array de strings de 2 dígitos. No se permiten números duplicados |
 
+### Validación de duplicados entre apuestas (mismo día, misma tirada)
+
+Un usuario **NO** puede repetir la misma jugada en el mismo día a la misma tirada:
+
+1. **Fijo/Corrido/Pick_3:** Si apostó el número "56" en una apuesta, no puede volver a apostar "56" en otra apuesta separada
+2. **Parlé:** Si apostó la pareja ["88","67"], no puede volver a apostar esa misma pareja (ni su inversa ["67","88"]) en ninguna modalidad
+3. **Candado:** Si apostó candado con ["37","75","02","58"], las combinaciones generadas (6 parejas) no pueden repetirse en ninguna modalidad
+
+**Ejemplo de error:**
+```
+Usuario aposta fijo "56" en tirada 1, hoy
+Luego intenta apostar fijo "56" en la misma tirada hoy
+→ Error: "El número 56 ya fue apostado hoy en esta tirada"
+```
+
+```
+Usuario aposta parlé ["88","67"] en tirada 1, hoy
+Luego intenta apostar corrido "88" en la misma tirada hoy
+→ Error: "El número 88 ya fue apostado hoy en esta tirada"
+```
+
 ---
 
 ## LÓGICA DE PREMIOS
