@@ -13,6 +13,7 @@ urlpatterns = [
     path('me/', usuario_me, name='usuarios-me'),
     path('', UsuarioViewSet.as_view({'get': 'list', 'post': 'create'}), name='usuarios-list'),
     path('<int:pk>/', UsuarioViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update'}), name='usuarios-detail'),
+    path('<int:pk>/ajustar_saldo/', UsuarioViewSet.as_view({'patch': 'ajustar_saldo'}), name='usuarios-ajustar-saldo'),
     
     # Tarjetas
     path('tarjetas/', TarjetaSistemaViewSet.as_view({'get': 'list', 'post': 'create'}), name='tarjetas-list'),

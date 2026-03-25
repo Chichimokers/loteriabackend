@@ -39,6 +39,58 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
         return Response(UsuarioSerializer(user).data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=True, methods=['patch'], permission_classes=[IsAuthenticated])
+    def ajustar_saldo(self, request, pk=None):
+        if not request.user.is_staff:
+            return Response({'error': 'No autorizado'}, status=status.HTTP_403_FORBIDDEN)
+        
+        usuario = get_object_or_404(Usuario, pk=pk)
+        
+        monto = request.data.get('monto')
+        tipo = request.data.get('tipo', 'principal')
+        operacion = request.data.get('operacion', 'sumar')
+        
+        if monto is None:
+            return Response({'error': 'monto es requerido'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            monto = float(monto)
+        except (ValueError, TypeError):
+            return Response({'error': 'monto debe ser un número'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if monto <= 0:
+            return Response({'error': 'monto debe ser mayor que 0'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if tipo not in ['principal', 'extraccion']:
+            return Response({'error': 'tipo debe ser "principal" o "extraccion"'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if operacion not in ['sumar', 'restar']:
+            return Response({'error': 'operacion debe ser "sumar" o "restar"'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if tipo == 'principal':
+            if operacion == 'sumar':
+                usuario.saldo_principal += monto
+            else:
+                if usuario.saldo_principal < monto:
+                    return Response({'error': 'Saldo insuficiente para restar'}, status=status.HTTP_400_BAD_REQUEST)
+                usuario.saldo_principal -= monto
+        else:
+            if operacion == 'sumar':
+                usuario.saldo_extraccion += monto
+            else:
+                if usuario.saldo_extraccion < monto:
+                    return Response({'error': 'Saldo de extracción insuficiente para restar'}, status=status.HTTP_400_BAD_REQUEST)
+                usuario.saldo_extraccion -= monto
+        
+        usuario.save()
+        
+        return Response({
+            'message': f'Saldo {tipo} actualizado correctamente',
+            'usuario': usuario.email,
+            'saldo_principal': str(usuario.saldo_principal),
+            'saldo_extraccion': str(usuario.saldo_extraccion)
+        })
 
 
 class TarjetaSistemaViewSet(viewsets.ModelViewSet):
