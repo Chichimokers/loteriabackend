@@ -1,20 +1,18 @@
 # loteriabackend
 
-## Tecnologias
-- Docker
-- Dockerfile
-- Python
+## Lenguajes
+- {'size': 1076, 'node': {'name': 'Dockerfile'}}
+- {'size': 80529, 'node': {'name': 'Python'}}
 
 ## Instalacion
 
 ```bash
-pip install -r requirements.txt
-python main.py
+git clone https://github.com/Chichimokers/loteriabackend.git
+cd loteriabackend
+pip install -r requirements.txt  # o npm install
+python run.py  # o npm run dev
 ```
 
-## Descripcion
-
-Proyecto loteriabackend.
-
 ---
-(c) 2026 Chichimokers -- https://github.com/Chichimokers/loteriabackend
+
+(c) 2026 Chichimokers - Proyecto Privado
